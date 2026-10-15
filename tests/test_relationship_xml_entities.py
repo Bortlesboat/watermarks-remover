@@ -21,6 +21,7 @@ TYPE_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 
 def _make_docx(rels_name: str, relationships: str, extra_parts: dict[str, bytes]) -> bytes:
+    """Build a synthetic DOCX with caller-supplied relationship XML kept unescaped."""
     parts = {
         "[Content_Types].xml": b'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="xml" ContentType="application/xml"/><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="svg" ContentType="image/svg+xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
         "word/document.xml": DOCUMENT,
@@ -79,6 +80,7 @@ def _make_docx(rels_name: str, relationships: str, extra_parts: dict[str, bytes]
     ],
 )
 def test_docx_preserves_xml_encoded_relationship_target(quote, rels_name, target, part_name):
+    """Decode targets once for lookup without rewriting retained XML or part bytes."""
     is_document = part_name == "word/document.xml"
     rel_type = "officeDocument" if is_document else "image"
     relationship = (
@@ -104,11 +106,13 @@ def test_docx_preserves_xml_encoded_relationship_target(quote, rels_name, target
     ],
 )
 def test_long_invalid_character_reference_stays_literal(reference):
+    """Invalid references retain their spelling even beyond Python's integer limit."""
     assert _decode_xml_entities(reference) == reference
 
 
 @pytest.mark.parametrize("quote", ['"', "'"])
 def test_docx_prunes_removed_and_missing_encoded_targets(quote):
+    """Entity decoding preserves external links but still prunes absent internal parts."""
     rels_name = "word/_rels/document.xml.rels"
     removed = (
         f'<Relationship Id="removed" Type="{TYPE_NS}/customXml" '

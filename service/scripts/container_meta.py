@@ -2121,6 +2121,7 @@ def _decode_xml_entities(s: str) -> str:
     """
 
     def _sub(m: re.Match[str]) -> str:
+        """Resolve one reference without passing unbounded digits to int()."""
         hex_digits, decimal, named = m.group(1), m.group(2), m.group(3)
         if named:
             return _XML_NAMED_ENTITIES[named]
@@ -2400,6 +2401,7 @@ def _prune_dangling_relationships(
         return m.group(2) if m else ""
 
     def _drop(m: re.Match[str]) -> str:
+        """Use decoded targets for lookup while preserving each retained tag verbatim."""
         tag = m.group(0)
         if re.search(r"\bTargetMode\s*=", tag, re.I):
             return tag  # external (http / mailto / ...) — never pruned
