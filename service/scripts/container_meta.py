@@ -2124,7 +2124,11 @@ def _decode_xml_entities(s: str) -> str:
         hex_digits, decimal, named = m.group(1), m.group(2), m.group(3)
         if named:
             return _XML_NAMED_ENTITIES[named]
-        codepoint = int(hex_digits, 16) if hex_digits else int(decimal)
+        digits = (hex_digits or decimal).lstrip("0") or "0"
+        # Unicode code points need at most six hex or seven decimal digits.
+        if len(digits) > (6 if hex_digits else 7):
+            return m.group(0)
+        codepoint = int(digits, 16 if hex_digits else 10)
         if codepoint == 0 or codepoint > 0x10FFFF or 0xD800 <= codepoint <= 0xDFFF:
             return m.group(0)  # not a character; leave for the real parser to reject
         try:
@@ -2399,7 +2403,7 @@ def _prune_dangling_relationships(
         tag = m.group(0)
         if re.search(r"\bTargetMode\s*=", tag, re.I):
             return tag  # external (http / mailto / ...) — never pruned
-        target = _target_attr(tag)
+        target = _decode_xml_entities(_target_attr(tag))
         if target.startswith("/"):
             resolved = posixpath.normpath(target.lstrip("/"))
         else:
